@@ -1,0 +1,17 @@
+torch
+torchvision
+torchaudio
+spacy>=3.4.0
+scipy
+scikit-learn
+numpy<2.0
+matplotlib
+tqdm
+requests
+gdown
+fastapi
+uvicorn
+python-multipart
+moviepy==1.0.3
+transformers
+tokenizers

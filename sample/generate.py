@@ -6,6 +6,18 @@ numpy array. This can be used to produce samples for FID evaluation.
 from utils.fixseed import fixseed
 import os
 import numpy as np
+import sys
+import os
+import numpy as np
+
+# Mocking chumpy for SMPL loading
+try:
+    import chumpy
+except ImportError:
+    import chumpy_mock
+    sys.modules['chumpy'] = chumpy_mock
+    print("Injected chumpy mock.")
+
 import torch
 from utils.parser_util import generate_args
 from utils.model_util import create_model_and_diffusion, load_saved_model
@@ -164,11 +176,14 @@ def main(args=None):
             sample = recover_from_ric(sample, n_joints)
             sample = sample.view(-1, *sample.shape[2:]).permute(0, 2, 3, 1)
 
-        rot2xyz_pose_rep = 'xyz' if model.data_rep in ['xyz', 'hml_vec'] else model.data_rep
-        rot2xyz_mask = None if rot2xyz_pose_rep == 'xyz' else model_kwargs['y']['mask'].reshape(args.batch_size, n_frames).bool()
-        sample = model.rot2xyz(x=sample, mask=rot2xyz_mask, pose_rep=rot2xyz_pose_rep, glob=True, translation=True,
-                               jointstype='smpl', vertstrans=True, betas=None, beta=0, glob_rot=None,
-                               get_rotations_back=False)
+        if model.rot2xyz is not None:
+            rot2xyz_pose_rep = 'xyz' if model.data_rep in ['xyz', 'hml_vec'] else model.data_rep
+            rot2xyz_mask = None if rot2xyz_pose_rep == 'xyz' else model_kwargs['y']['mask'].reshape(args.batch_size, n_frames).bool()
+            sample = model.rot2xyz(x=sample, mask=rot2xyz_mask, pose_rep=rot2xyz_pose_rep, glob=True, translation=True,
+                                   jointstype='smpl', vertstrans=True, betas=None, beta=0, glob_rot=None,
+                                   get_rotations_back=False)
+        else:
+            print("Headless mode: Skipping Rotation2xyz. Sample remains in model's data_rep.")
 
         if args.unconstrained:
             all_text += ['unconstrained'] * args.num_samples
@@ -239,12 +254,17 @@ def main(args=None):
             save_file = sample_file_template.format(sample_i, rep_i)
             animation_save_path = os.path.join(out_path, save_file)
             gt_frames = np.arange(args.context_len) if args.context_len > 0 and not args.autoregressive else []
-            animations[sample_i, rep_i] = plot_3d_motion(animation_save_path, 
-                                                         skeleton, motion, dataset=args.dataset, title=caption, 
-                                                         fps=fps, gt_frames=gt_frames)
+            if model.rot2xyz is not None:
+                animations[sample_i, rep_i] = plot_3d_motion(animation_save_path, 
+                                                             skeleton, motion, dataset=args.dataset, title=caption, 
+                                                             fps=fps, gt_frames=gt_frames)
+            else:
+                print(f"Headless mode: Skipping plot_3d_motion for {animation_save_path}")
+                animations[sample_i, rep_i] = None
             rep_files.append(animation_save_path)
 
-    save_multiple_samples(out_path, {'all': all_file_template}, animations, fps, max(list(all_lengths) + [n_frames]))
+    if model.rot2xyz is not None:
+        save_multiple_samples(out_path, {'all': all_file_template}, animations, fps, max(list(all_lengths) + [n_frames]))
 
     abs_path = os.path.abspath(out_path)
     print(f'[Done] Results are at [{abs_path}]')
