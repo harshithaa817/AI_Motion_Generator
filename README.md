@@ -1,5 +1,6 @@
 AI Motion Generator
 A web-based generative AI application that converts natural language text prompts into 3D human motion animations. Built on top of the MDM (Human Motion Diffusion Model) research paper, extended with a custom Flask backend and browser-based frontend.
+<img width="210" height="289" alt="image" src="https://github.com/user-attachments/assets/9b04a572-de1b-43a5-8866-51bfee3fd5f4" />
 
 What it does
 Type a sentence like "a person walks forward and picks up a box" and the system generates a realistic 3D skeletal animation of that motion. The output can be rendered as a stick figure video or a full SMPL body mesh (importable into Blender/Maya).
